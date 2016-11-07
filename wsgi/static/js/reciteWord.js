@@ -1,20 +1,23 @@
-﻿var db, limit = 20;
+﻿var db;
 var unit = [];
 var openRequest;
-var myBooks = JSON.parse(localStorage.getItem("myBooks")) || {};
-var currentBook = localStorage.getItem("book");
+var serverData = {};
+var reciteTimes = {};
+var updateWords = {};
 var currentWord, index;
 var completeNumber = 0;
-var reciteTimes = {};
+var limit = localStorage.getItem("limit") || 20;
+var currentBook = localStorage.getItem("book");
+var myBooks = JSON.parse(localStorage.getItem("myBooks")) || {};
+
+String.prototype.trim=function() {
+    return this.replace(/(^\s*)|(\s*$)/g,'');
+};
 
 $(document).ready(function(){
     if (!currentBook || currentBook === "") {
         //$("#start").html("开始学习 (当前未选中单词书，请先到词库选择)");
         $("#currentBook").html('未选中单词书，请先到词库选择');
-    }
-    else {
-        var num = myBooks[currentBook].num, finish = myBooks[currentBook].finish;
-        updateProgress(num, finish);
     }
 
     $(document).keydown(function (event) {
@@ -51,7 +54,7 @@ $(document).ready(function(){
             else if (section == "remember") { // remember页面对应 不重要单词
                 trivial();
             }*/
-            audio($('audio')[0], $('a.us').data("rel"));
+            audio($('audio')[0], $('a.us').attr("data-rel"));
             return false;
         }
     });
@@ -78,6 +81,10 @@ $(document).ready(function(){
         var transaction = db.transaction(["word"], "readwrite");
         var itemStore = transaction.objectStore("word");
         currentWord.level = Math.max(currentWord.level/2, 10);
+        if (!(currentWord.word in updateWords)) {
+            updateWords[currentWord.word] = {};
+        }
+        updateWords[currentWord.word]['level'] = currentWord.level;
         itemStore.put(currentWord);
         $("#next_right").css("display", "none");
         $("#next_wrong").css("display", "inline-block");
@@ -100,6 +107,10 @@ $(document).ready(function(){
         var transaction = db.transaction(["word"], "readwrite");
         var itemStore = transaction.objectStore("word");
         currentWord.level = 10;
+        if (!(currentWord.word in updateWords)) {
+            updateWords[currentWord.word] = {};
+        }
+        updateWords[currentWord.word]['level'] = currentWord.level;
         itemStore.put(currentWord);
         unit.splice(index, 1);
 
@@ -117,13 +128,18 @@ $(document).ready(function(){
         var transaction = db.transaction(["word"], "readwrite");
         var itemStore = transaction.objectStore("word");
         currentWord.level = Math.min(currentWord.level+1, 10);
+
+        if (!(currentWord.word in updateWords)) {
+            updateWords[currentWord.word] = {};
+        }
+        updateWords[currentWord.word]['level'] = currentWord.level;
+
         itemStore.put(currentWord);
         reciteTimes[currentWord.word] = reciteTimes[currentWord.word] + 1 || 1;
 
         if (currentWord.level === 10 || reciteTimes[currentWord.word] === 3) {
             unit.splice(index, 1);
             completeNumber++;
-
             if (currentWord.level === 10) {
                 myBooks[currentBook].finish += 1;
                 $("#currentBookFinish").html(" 记忆个数:" + myBooks[currentBook].finish);
@@ -143,6 +159,10 @@ $(document).ready(function(){
         var transaction = db.transaction(["word"], "readwrite");
         var itemStore = transaction.objectStore("word");
         currentWord.level =  Math.max(currentWord.level/2, 10);
+        if (!(currentWord.word in updateWords)) {
+            updateWords[currentWord.word] = {};
+        }
+        updateWords[currentWord.word]['level'] = currentWord.level;
         itemStore.put(currentWord);
         reciteMainView();
     }
@@ -152,6 +172,10 @@ $(document).ready(function(){
         var transaction = db.transaction(["word"], "readwrite");
         var itemStore = transaction.objectStore("word");
         currentWord.level = 11;
+        if (!(currentWord.word in updateWords)) {
+            updateWords[currentWord.word] = {};
+        }
+        updateWords[currentWord.word]['level'] = currentWord.level;
         itemStore.put(currentWord);
         unit.splice(index, 1);
         completeNumber++;
@@ -181,6 +205,18 @@ $(document).ready(function(){
     setSkin(demoColorArray[colorIndex]);
     animate();
 
+    function updateSetting() {
+        limit = $("#unitNum").val() || 20;
+        localStorage.setItem("limit", limit);
+        unit = [];
+        $("#recite").attr("class", "tab-pane fade in active");
+        $("#setting").attr("class", "tab-pane fade");
+        $("#myTab").children('li.active').removeClass('active');
+        $("#myTab").children('li').children('a[href="#recite"]').parent().addClass('active');
+        animate();
+    }
+    $(".unitNum").click(updateSetting);
+
     for (var book in myBooks) {
         var num = myBooks[book].num, finish = myBooks[book].finish,
             newBook = "<div><a href='javascript:void(0)' class='storedBook'" +
@@ -198,6 +234,67 @@ window.IDBKeyRange = window.IDBKeyRange || window.webkitIDBKeyRange || window.ms
 
 if (currentBook) {
     initIndexDB("init", null, null);
+}
+
+function putWords() {
+
+    $.ajax({
+        method: "post",
+        url : "/putWords",
+        contentType: 'application/json',
+        dataType: "json",
+        data: JSON.stringify({'data': updateWords, 'book': currentBook}),
+        success : function (data){
+            updateWords = {};
+        }
+    });
+}
+
+function getWords() {
+    var i = 0, num = myBooks[currentBook].num,
+        finish = myBooks[currentBook].finish;
+    $.ajax({
+        method: "get",
+        url : "/getWords/"+currentBook,
+        contentType: 'application/json',
+        dataType: "json",
+        success : function (data){
+            serverData = data;
+            var transaction = db.transaction(["word"], "readwrite");
+            var itemStore = transaction.objectStore("word"), keys = [];
+            for (var e in serverData) {
+                keys.push(e);
+            }
+
+            getNext();
+
+            function getNext() {
+                if (i < keys.length) {
+                    var word = keys[i];
+                    itemStore.get(word).onsuccess = function (e) {
+                        var item = e.target.result;
+                        for (var ele in serverData[word]) {
+                            if ('level' in serverData[word] && item['level']
+                             !== 10 && serverData[word]['level'] === 10) {
+                                myBooks[currentBook].finish++;
+                            }
+                            if (serverData[word][ele] && serverData[word][ele] !== "") {
+                                item[ele] = serverData[word][ele];
+                            }
+                        }
+                        ++i;
+                        itemStore.put(item).onsuccess = getNext;
+                    }
+                } else {
+                    localStorage.setItem('myBooks', JSON.stringify(myBooks));
+                    updateProgress(num, myBooks[currentBook].finish);
+                }
+            }
+        },
+        error: function(e) {
+            updateProgress(num, finish);
+        }
+    });
 }
 
 function initIndexDB(type, content, name) {
@@ -227,6 +324,7 @@ function initIndexDB(type, content, name) {
             }
         } else {
             console.log('数据库已存在，连接成功');
+            getWords();
         }
 
         if (type == "newbook") {
@@ -257,13 +355,12 @@ function chooseBooks(obj) {
 
     if (currentBook !== $(obj).html()) {
         console.log('更换单词书');
-        currentBook = $(obj).html();
+        putWords();
+        currentBook = $(obj).html().trim();
+
         localStorage.setItem("book", currentBook);
 
         initIndexDB("init", null, null);
-
-        var num = myBooks[currentBook].num, finish = myBooks[currentBook].finish;
-        updateProgress(num, finish);
     }
 
     $("#myTab").children('li.active').removeClass('active');
@@ -297,7 +394,8 @@ function deleteDB(name){
 
 function toItemJson(item) {
     var jsonObj = {},
-        cols = ['id', 'word', 'level', 'lenovo', 'etyma', 'meanZh', 'meanEn', 'example', 'selfLenovo'];
+        cols = ['id', 'word', 'level', 'lenovo', 'etyma', 'meanZh', 'meanEn',
+         'example', 'phonetic', 'selfLenovo'];
     for (var i = 1; i < cols.length; i++) {
         if (i == 2) jsonObj[cols[i]] = 0;
         else jsonObj[cols[i]] = item[i] || "";
@@ -307,7 +405,7 @@ function toItemJson(item) {
 
 function updateItemJson(jsonObj, item) {
     var flag = false, cols = ['id', 'word', 'level', 'lenovo', 'etyma',
-                              'meanZh', 'meanEn', 'example'];
+                              'meanZh', 'meanEn', 'example', 'phonetic'];
     for (var i = 3; i < cols.length; i++) {
         if (item[i] && item[i] !== "" && jsonObj[cols[i]] !== item[i]) {
             jsonObj[cols[i]] = item[i];
@@ -349,7 +447,6 @@ function updateBook(content, name) {
                 localStorage.setItem('myBooks', JSON.stringify(myBooks));
                 updateProgress(i, myBooks[currentBook].finish);
             }
-
             $("#myTab").children('li.active').removeClass('active');
             $("#myTab").children('li').children('a[href="#myBooks"]').parent().addClass('active');
 
@@ -405,10 +502,10 @@ function updateProgress(total, finish) {
 function downloadbook(obj, name) {
 
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', name, true);
+    xhr.open('GET', name+"?v="+Math.round(Math.random()*10000), true);
     xhr.responseType = 'arraybuffer';
-    currentBook = $(obj).html();
-    localStorage.setItem("book", $(obj).html());
+    currentBook = $(obj).html().trim();
+    localStorage.setItem("book", $(obj).html().trim());
 
     xhr.onload = function(e) {
         var uInt8Array = new Uint8Array(this.response);
@@ -421,7 +518,8 @@ function downloadbook(obj, name) {
 }
 
 function sessionEnd() {
-    alert("恭喜您完成本次 " + limit + "个单词的背诵");
+    //alert("恭喜您完成本次 " + limit + "个单词的背诵");
+    putWords();
     $("#recite").attr("class", "tab-pane fade in active");
     $("#recall").attr("class", "tab-pane fade");
     $("#remember").attr("class", "tab-pane fade");
@@ -436,9 +534,16 @@ function start() {
 
     cursorRequest.onsuccess = function (event) {
         var cursor = event.target.result;
-        if (cursor && unit.length < limit) {
-            unit.push(cursor.value);
-            i += 1;
+        if (cursor) {
+            if (unit.length < limit) {
+                unit.push(cursor.value);
+            } else {
+                var prob = 1.0 * limit / myBooks[currentBook].num;
+                if (Math.random() < prob) {
+                    unit[i%limit] = cursor.value;
+                }
+            }
+            i++;
             cursor.continue();
         }
         else {
@@ -448,29 +553,38 @@ function start() {
 }
 
 function renderLenovo(text) {
-    var result = "<h3>" + text.replace(/<r>/g, '<p style="color:red;display:inline-block">')
+    var result = "<h3>" +
+    text.replace(/<r>/g, '<p style="color:red;display:inline-block">')
         .replace(/<b>/g, '<p style="color:blue;display:inline-block">')
         .replace(/<g>/g, '<p style="color:green;display:inline-block">')
-        .replace(/<\/g>/g,'</p>').replace(/<\/r>/g,'</p>').replace(/<\/b>/g,'</p>')
-        .replace(/\(/g, '<p style="color:red;display:inline-block">')
-        .replace(/\)/g, '</p>') + "</h3>";
+    //.replace(/<\/g>/g,'</p>').replace(/<\/r>/g,'</p>').replace(/<\/b>/g,'</p>')
+        .replace(/<\/[grb]>/g,'</p>')
+        .replace(/[\(（]/g, '<p style="color:red;display:inline-block">')
+        .replace(/[\)）]/g, '</p>')
+        .replace(/[\r\n]/g, '<br>')
+        + "</h3>";
     //console.log(result);
     return result;
 }
 
 function reciteMainView() {
-    index = Math.round(Math.random() * (unit.length - 1));
+    var new_index = Math.round(Math.random() * (unit.length - 1));
+
+    if (unit.length > 1 && index === new_index)
+        new_index = unit.length - index - 1;
+    index = new_index;
     currentWord = unit[index];
 
     $(".word").html(currentWord.word);
     $(".uk").attr('data-rel', 'http://dict.youdao.com/dictvoice?type=1&audio=' + currentWord.word);
     $(".us").attr('data-rel', 'http://dict.youdao.com/dictvoice?type=2&audio=' + currentWord.word);
-    $("#etyma").html(currentWord.etyma);
-    $("#example").html(currentWord.examle);
-    $("#zh").html(currentWord.meanZh);
-    $("#en").html(currentWord.meanEn);
+    $("#etyma").html(currentWord.etyma.replace(/[\r\n]/g, '<br>'));
+    $("#example").html(currentWord.example.replace(/[\r\n]/g, '<br>'));
+    $("#zh").html(currentWord.meanZh.replace(/[\r\n]/g, '<br>'));
+    $("#en").html(currentWord.meanEn.replace(/[\r\n]/g, '<br>'));
     $("#youdao").attr("href", "http://dict.youdao.com/search?q=" + currentWord.word);
     $("#youdao").attr("target", "_blank");
+
     var media = document.getElementsByTagName('audio')[0];
     audio(media, 'http://dict.youdao.com/dictvoice?type=2&audio=' + currentWord.word);
 
@@ -494,6 +608,10 @@ function addLenovo(obj) {
         $("#lenovo").html("自创记忆法:"+renderLenovo(text)+"参考记忆法:"+
             renderLenovo(currentWord.lenovo));
         currentWord.selfLenovo = text;
+        if (!(currentWord.word in updateWords)) {
+            updateWords[currentWord.word] = {};
+        }
+        updateWords[currentWord.word]['selfLenovo'] = text;
         var transaction = db.transaction(["word"], "readwrite");
         var itemStore = transaction.objectStore("word");
         itemStore.put(currentWord);
@@ -503,10 +621,4 @@ function addLenovo(obj) {
 
 function createNote() {
     $('#note').show();
-}
-
-function updateSetting() {
-    limit = $("#unitNum").val() || 20;
-    $("#recite").attr("class", "tab-pane fade in active");
-    $("#setting").attr("class", "tab-pane fade");
 }
