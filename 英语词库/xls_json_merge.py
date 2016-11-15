@@ -6,6 +6,10 @@ import numpy as np
 import pandas as pd
 import sqlite3 as sq
 
+import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
+
 data = xlrd.open_workbook('another-3000.xls')
 
 fp = file('3000.json')
@@ -38,14 +42,24 @@ print len(content)
 
 data = pd.DataFrame(content, columns=l)
 
-data['selfLenovo'] = ""
+from  openpyxl.workbook  import  Workbook
+from  openpyxl.writer.excel import ExcelWriter
+#wb = Workbook()
 
-#data = pd.read_csv(sys.argv[1] + '.csv', index_col=False)
+writer = pd.ExcelWriter('outwriter.xls')
+data.to_excel(writer, index=False)
+writer.save()
 
-data['level'] = 0
+#data.to_csv('test.csv')
 
-#print data[:3]
-
-con  = sq.connect('another-3000.db')
-
-data.to_sql('word', con)
+#data['selfLenovo'] = ""
+#
+##data = pd.read_csv(sys.argv[1] + '.csv', index_col=False)
+#
+#data['level'] = 0
+#
+##print data[:3]
+#
+#con  = sq.connect('another-3000.db')
+#
+#data.to_sql('word', con)
