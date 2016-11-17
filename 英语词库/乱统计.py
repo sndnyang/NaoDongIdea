@@ -10,7 +10,7 @@ l = ['word', 'level', 'lenovo', 'etyma', 'meanZh', 'meanEn', 'example']
 
 content = []
 
-for i in range(2, nrows): # 循环逐行打印
+for i in range(1, nrows): # 循环逐行打印
     if i == 0: # 跳过第一行
         continue
     row = table.row_values(i)[:len(l)]
