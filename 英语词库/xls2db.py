@@ -7,15 +7,15 @@ import sqlite3 as sq
 data = xlrd.open_workbook(sys.argv[1])
 table = data.sheets()[0]
 nrows = table.nrows # 获取表的行数
-l = ['word', 'level', 'lenovo', 'etyma', 'meanZh', 'meanEn', 'example']
+l = ['word', 'level', 'lenovo', 'etyma', 'meanZh', 'meanEn', 'example', 'phonetic']
 
 content = []
 
-for i in range(2, nrows): # 循环逐行打印
+for i in range(1, nrows): # 循环逐行打印
     if i == 0: # 跳过第一行
         continue
     row = table.row_values(i)[:len(l)]
-    if len(row) > 7:
+    if len(row) > 8:
         print len(row), row
         sys.exit()
     content.append(row)
