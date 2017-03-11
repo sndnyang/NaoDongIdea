@@ -1,49 +1,51 @@
 {% extends "layout.html" %}
 {% block body %}
 
-        <link href="/static/css/ListTabMenu.css" rel="stylesheet">
-        <link href="/static/css/reciteWord.css" rel="stylesheet">
-        <link href="/static/css/loader.css" rel="stylesheet"  media="screen" type="text/css" />
-        <script src="//cdn.bootcss.com/sql.js/0.3.2/js/sql.js"></script>
-        <script src="/static/js/loader.js"></script>
-        <script src="/static/js/reciteWord.js"></script>
+<link href="/static/css/ListTabMenu.css" rel="stylesheet">
+<link href="/static/css/reciteWord.css" rel="stylesheet">
+<link href="/static/css/loader.css" rel="stylesheet" media="screen" type="text/css"/>
+<script src="//cdn.bootcss.com/sql.js/0.3.2/js/sql.js"></script>
+<script src="/static/js/loader.js"></script>
+<script src="/static/js/reciteWord.js"></script>
 
 
 <ul id="myTab" class="nav nav-tabs">
-	<li class="active">
-		<a href="#recite" data-toggle="tab">背单词	</a>
-	</li>
-	<li><a href="#books" data-toggle="tab">词库</a></li>
-	<li><a href="#myBooks" data-toggle="tab">我的词库</a></li>
+    <li class="active">
+        <a href="#recite" data-toggle="tab">背单词 </a>
+    </li>
+    <li><a href="#books" data-toggle="tab">词库</a></li>
+    <li><a href="#myBooks" data-toggle="tab">我的词库</a></li>
     <li><a href="#setting" data-toggle="tab">背单词设置</a></li>
-    <!--<li class="dropdown">
-		<a href="#" id="myTabDrop1" class="dropdown-toggle"
-		   data-toggle="dropdown">Java
-			<b class="caret"></b>
-		</a>
-		<ul class="dropdown-menu" role="menu" aria-labelledby="myTabDrop1">
-			<li><a href="#jmeter" tabindex="-1" data-toggle="tab">jmeter</a></li>
-			<li><a href="#ejb" tabindex="-1" data-toggle="tab">ejb</a></li>
-		</ul>
-	</li>-->
 </ul>
 
 <div id="myTabContent" class="tab-content">
-	<div class="tab-pane fade in active" id="recite">
-        <a href="#" onclick="start()" id="start">
-            开始学习 (当前
-            <span id="currentBook"></span>
-            <span id="currentBookNum"></span>
-            <span id="currentBookFinish"></span>
-            )
-        </a>
+    <div class="tab-pane fade in active" id="recite">
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <div class="container-fluid">
+                    <div class="row-fluid">
+                        <div class="col-md-10 col-md-offset-1">
+                            <a href="#" onclick="start()" id="start">
+                                开始学习 (当前
+                                <span id="currentBook"></span>
+                                <span id="currentBookNum"></span>
+                                <span id="currentBookFinish"></span>
+                                )
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-	<div class="tab-pane fade" id="recall">
+    <div class="tab-pane fade" id="recall">
         <main style="margin:0px auto; text-align:center;">
             <div style="display:inline-block;">
-                <h1 class="word" style="float: left"></h1>
+                <h1 class="word"></h1>
+                <div class="word_quiz" ></div>
             </div>
             <div class="learning-speaker">
+                <p class="phonetic"></p>
                 <span>UK<a href="#" class="fa fa-volume-up fa-2x audio uk">
                     <audio class="media"></audio>
                 </a></span>
@@ -52,16 +54,16 @@
                 </a>按向下键发美音</span>
             </div>
             <br>
-            <div  style="text-align:center;">
+            <div style="text-align:center;">
                 <div style="overflow:hidden; display:inline-block;">
                     <div style="float:left;">
-                        <a class="btn" type="button" id="fuzzy">模糊(left)</a>
+                        <a class="btn btn-info" type="button" id="fuzzy">模糊(left)</a>
                     </div>
                     <div style="float:left;">
-                        <a class="btn" type="button" id="ok">知道(up)</a>
+                        <a class="btn btn-success" type="button" id="ok">知道(up)</a>
                     </div>
                     <div style="float:left;">
-                        <a class="btn" type="button" id="sorry">不知道(right)</a>
+                        <a class="btn btn-danger" type="button" id="sorry">不知道(right)</a>
                     </div>
                 </div>
             </div>
@@ -75,14 +77,15 @@
             <div class="total" style="right:5px"></div>
         </div>
     </div>
-	<div class="tab-pane fade" id="remember">
-		<main style="margin:0px auto; text-align:center;">
+    <div class="tab-pane fade" id="remember">
+        <main style="margin:0px auto; text-align:center;">
             <div style="display:inline-block;">
                 <h1 class="word" style="float: left"></h1>
                 <a class="fa fa-trash fa-2x" id="trivial"
                    style="margin: 10px 0;line-height: 40px;"></a>
             </div>
             <div class="learning-speaker">
+                <p class="phonetic"></p>
                 <span>UK<a href="#" class="fa fa-volume-up fa-2x audio uk">
                     <audio class="media"></audio>
                 </a></span>
@@ -91,26 +94,26 @@
                 </a>按向下键发美音</span>
             </div>
             <br>
-            <div  style="text-align:center;">
+            <div style="text-align:center;">
                 <div style="overflow:hidden; display:inline-block;">
                     <h4 style="float:left;" id="zh">中文</h4>
                     <h4 style="float:left;" id="en">英文</h4>
                 </div>
             </div>
-            <div  style="text-align:center;">
+            <div style="text-align:center;">
                 <div style="overflow:hidden; display:inline-block;" id="next_right">
                     <div style="float:left;">
-                        <a class="btn" type="button" id="right">记对了(left)</a>
+                        <a class="btn btn-info" type="button" id="right">记对了(left)</a>
                     </div>
                     <div style="float:left;">
-                        <a class="btn" type="button" id="master">完全掌握(up)</a>
+                        <a class="btn btn-success" type="button" id="master">完全掌握(up)</a>
                     </div>
                     <div style="float:left;">
-                        <a class="btn" type="button" id="wrong">错误(right)</a>
+                        <a class="btn btn-danger" type="button" id="wrong">错误(right)</a>
                     </div>
                 </div>
                 <div style="display: none" id="next_wrong">
-                    <a class="btn" type="button" id="next">下一个(right)</a>
+                    <a class="btn btn-info" type="button" id="next">下一个(right)</a>
                 </div>
             </div>
             <hr>
@@ -129,11 +132,11 @@
                 </div>
                 <div>
                     <button type="button" class="btn btn-primary"
-                           style="min-width:20px; min-height:20px;" onclick="createNote()">
+                            style="min-width:20px; min-height:20px;" onclick="createNote()">
                         自创记忆法
                     </button>
                     <div id="note" style="display: none">
-                        <textarea placeholder="()内文字显示红色"></textarea>
+                        <textarea placeholder="括号内文字会显示红色,中英文括号皆可"></textarea>
                         <button type="button" class="btn btn-success" id="addNote"
                                 style="min-width:20px; min-height:20px;" onclick="addLenovo(this)">
                             更新
@@ -165,28 +168,63 @@
             </div>
             <div class="total" style="right:5px"></div>
         </div>
-	</div>
-	<div class="tab-pane fade" id="books">
-        {% for book in books %}
-        <div>
-            <a href="javascript:void(0)" onclick="
+    </div>
+    <div class="tab-pane fade" id="books">
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <div class="container-fluid">
+                    <div class="row-fluid">
+                        <div class="col-md-10 col-md-offset-1" id="books2">
+                            {% for book in books %}
+                            <div>
+                                <a href="javascript:void(0)" onclick="
             downloadbook(this, '{{ book.link }}')">
-                {{ book.name }}
-            </a>
-            <span>单词数: {{ book.num }}</span>
+                                    {{ book.name }}
+                                </a>
+                                <span>单词数: {{ book.num }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-        {% endfor %}
-	</div>
-	<div class="tab-pane fade" id="myBooks">
-		
-	</div>
-	<div class="tab-pane fade" id="setting">
-        <div>
-            一组单词个数(默认20个):<input type="text" id="unitNum"/>
-            <a class="btn" type="button" onclick="updateSetting()">更新</a>
+    </div>
+    <div class="tab-pane fade" id="myBooks">
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <div class="container-fluid">
+                    <div class="row-fluid">
+                        <div class="col-md-10 col-md-offset-1" id="myBooks2">
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
-
-	</div>
+    </div>
+    <div class="tab-pane fade" id="setting">
+        <div class="panel panel-default">
+            <div class="panel-body">
+                <div class="container-fluid">
+                    <div class="row-fluid">
+                        <div class="col-md-10 col-md-offset-1">
+                            一组单词个数(默认20个):<input type="text" class="form-control" id="unitNum"/>
+                        </div>
+                        <div class="col-md-10 col-md-offset-1">
+                            学习模式:<select id="unitMode">
+                                <option value="en-zh">看英文想中文</option>
+                                <option value="zh-en">看中文、例句填词</option>
+                                <option value="mix">混合</option>
+                            </select>
+                        </div>
+                        <div class="col-md-10 col-md-offset-1">
+                            <a type="button" class="unitNum btn btn-info">更新</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}

@@ -6,6 +6,7 @@ var reciteTimes = {};
 var updateWords = {};
 var currentWord, index;
 var completeNumber = 0;
+var mode = localStorage.getItem("mode") || "en-zh";
 var limit = localStorage.getItem("limit") || 20;
 var currentBook = localStorage.getItem("book");
 var myBooks = JSON.parse(localStorage.getItem("myBooks")) || {};
@@ -21,12 +22,19 @@ $(document).ready(function(){
     }
 
     $(document).keydown(function (event) {
-        if ($("textarea").is(":focus") || $("textarea").is(":focus")) {
+        if ($("textarea").is(":focus")) {
             return true;
         }
-        var section = $("div.active").attr("id"),
+
+        if (event.keyCode == 13 && $("input").is(":focus")) {
+            word_quiz();
+            return true;
+        }
+
+            var section = $("div.active").attr("id"),
             forget = $("#next_right").css("display");
-        if(event.keyCode == 37) {
+
+        if (event.keyCode == 37) {
             //判断当event.keyCode 为37时（即左方面键）
             if (section == "recall") { fuzzy(); } //recall页面对应 模糊
             else if (section == "remember") { // remember页面对应 记对了
@@ -69,18 +77,30 @@ $(document).ready(function(){
     $("#ok").click(ok);
 
     function fuzzy() {
-        $("#next_right").css("display", "inline-block");
-        $("#next_wrong").css("display", "none");
-        $("#recall").attr("class", "tab-pane fade");
-        $("#remember").attr("class", "tab-pane fade in active");
+        if ($(".word").html() != currentWord.word) {
+            word_quiz();
+        }
+        else {
+            $("#next_right").css("display", "inline-block");
+            $("#next_wrong").css("display", "none");
+            $("#recall").attr("class", "tab-pane fade");
+            $("#remember").attr("class", "tab-pane fade in active");
+        }
     }
 
     $("#fuzzy").click(fuzzy);
 
     function sorry() {
+        if ($(".word").html().trim() != currentWord.word.trim()) {
+            $(".word").html(currentWord.word.trim());
+            $("#zh").html(currentWord.meanZh.replace(/[\r\n]/g, '<br>'));
+            $("#en").html(currentWord.meanEn.replace(/[\r\n]/g, '<br>'));
+            var media = document.getElementsByTagName('audio')[0];
+            audio(media, 'http://dict.youdao.com/dictvoice?type=2&audio=' + currentWord.word);
+        }
         var transaction = db.transaction(["word"], "readwrite");
         var itemStore = transaction.objectStore("word");
-        currentWord.level = Math.max(currentWord.level/2, 10);
+        currentWord.level = Math.max(Math.floor(currentWord.level/2), 1);
         if (!(currentWord.word in updateWords)) {
             updateWords[currentWord.word] = {};
         }
@@ -124,6 +144,7 @@ $(document).ready(function(){
         else { reciteMainView(); }
         animate();
     }
+
     function right() {
         var transaction = db.transaction(["word"], "readwrite");
         var itemStore = transaction.objectStore("word");
@@ -137,10 +158,10 @@ $(document).ready(function(){
         itemStore.put(currentWord);
         reciteTimes[currentWord.word] = reciteTimes[currentWord.word] + 1 || 1;
 
-        if (currentWord.level === 10 || reciteTimes[currentWord.word] === 3) {
+        if (currentWord.level > 9 || reciteTimes[currentWord.word] >= 3) {
             unit.splice(index, 1);
             completeNumber++;
-            if (currentWord.level === 10) {
+            if (currentWord.level > 9) {
                 myBooks[currentBook].finish += 1;
                 $("#currentBookFinish").html(" 记忆个数:" + myBooks[currentBook].finish);
                 localStorage.setItem('myBooks', JSON.stringify(myBooks));
@@ -158,7 +179,7 @@ $(document).ready(function(){
     function wrong() {
         var transaction = db.transaction(["word"], "readwrite");
         var itemStore = transaction.objectStore("word");
-        currentWord.level =  Math.max(currentWord.level/2, 10);
+        currentWord.level =  Math.max(Math.floor(currentWord.level/2), 1);
         if (!(currentWord.word in updateWords)) {
             updateWords[currentWord.word] = {};
         }
@@ -207,7 +228,9 @@ $(document).ready(function(){
 
     function updateSetting() {
         limit = $("#unitNum").val() || 20;
+        mode = $("#unitMode").val() || "en-zh";
         localStorage.setItem("limit", limit);
+        localStorage.setItem("mode", mode);
         unit = [];
         $("#recite").attr("class", "tab-pane fade in active");
         $("#setting").attr("class", "tab-pane fade");
@@ -223,7 +246,20 @@ $(document).ready(function(){
                 " onclick='chooseBooks(this)'>" + book + "</a> 总单词数:" + num +
                 ", 已完成:" + finish + "</div>";
 
-        $("#myBooks").append(newBook);
+        $("#myBooks2").append(newBook);
+    }
+
+    function word_quiz() {
+        var word1 = currentWord.temp, word2 = $("#word_quiz").val();
+        if (word1.trim() === word2.trim()) {
+            $("#fuzzy").text("模糊(left)");
+            $("#sorry").show();
+            $(".learning-speaker").show();
+            $(".word_quiz").hide();
+            right();
+        } else {
+            $(".word_quiz").append($("<p>wrong</p>"));
+        }
     }
 });
 
@@ -275,7 +311,7 @@ function getWords() {
                         var item = e.target.result;
                         for (var ele in serverData[word]) {
                             if ('level' in serverData[word] && item['level']
-                             !== 10 && serverData[word]['level'] === 10) {
+                             !== 10 && serverData[word]['level'] > 9) {
                                 myBooks[currentBook].finish++;
                             }
                             if (serverData[word][ele] && serverData[word][ele] !== "") {
@@ -482,7 +518,7 @@ function createNewBook(content, name) {
                 " onclick='chooseBooks(this)'>" + currentBook + "</a> 总单词数:"
                  + i +  ", 已完成:" + 0 + "</div>";
 
-            $("#myBooks").append(newBook);
+            $("#myBooks2").append(newBook);
 
             $("#myTab").children('li.active').removeClass('active');
             $("#myTab").children('li').children('a[href="#myBooks"]').parent().addClass('active');
@@ -532,18 +568,22 @@ function start() {
     store = transaction.objectStore("word");
     cursorRequest = store.index('level').openCursor(null, 'next');
 
+    unit = [];
+
     cursorRequest.onsuccess = function (event) {
         var cursor = event.target.result;
         if (cursor) {
-            if (unit.length < limit) {
-                unit.push(cursor.value);
-            } else {
-                var prob = 1.0 * limit / myBooks[currentBook].num;
-                if (Math.random() < prob) {
-                    unit[i%limit] = cursor.value;
+            if (cursor.value.level < 10) {
+                if (unit.length < limit) {
+                    unit.push(cursor.value);
+                } else {
+                    var prob = 1.0 * limit / myBooks[currentBook].num;
+                    if (Math.random() < prob) {
+                        unit[i%limit] = cursor.value;
+                    }
                 }
+                i++;
             }
-            i++;
             cursor.continue();
         }
         else {
@@ -567,26 +607,43 @@ function renderLenovo(text) {
     return result;
 }
 
-function reciteMainView() {
-    var new_index = Math.round(Math.random() * (unit.length - 1));
+function isStem(w1, w2) {
+    var i = 0;
+    for (i = 0; i < w1.length; i++) {
+        if (i >= w2.length || w1[i] != w2[i]) {
+            break;
+        }
+    }
+    return 3 * i > w1.length * 2.0;
+}
 
-    if (unit.length > 1 && index === new_index)
-        new_index = unit.length - index - 1;
-    index = new_index;
-    currentWord = unit[index];
+function genBlank(sentence, word) {
+    var c = true, words = sentence.split(" "),
+        input = '<input type="text" class="form-control" id="word_quiz"/>';
 
-    $(".word").html(currentWord.word);
+    for (var i in words) {
+        if (isStem(word, words[i])) {
+            if (c) {
+                currentWord.temp = words[i];
+                sentence = sentence.replace(words[i], input);
+                c = false;
+            } else {
+                sentence = sentence.replace(words[i], "___");
+            }
+        }
+    }
+    var span = $("<p>" + sentence + "</p>");
+    return span;
+}
+
+function learnPage() {
+    $(".phonetic").html(currentWord.phonetic);
     $(".uk").attr('data-rel', 'http://dict.youdao.com/dictvoice?type=1&audio=' + currentWord.word);
     $(".us").attr('data-rel', 'http://dict.youdao.com/dictvoice?type=2&audio=' + currentWord.word);
     $("#etyma").html(currentWord.etyma.replace(/[\r\n]/g, '<br>'));
     $("#example").html(currentWord.example.replace(/[\r\n]/g, '<br>'));
-    $("#zh").html(currentWord.meanZh.replace(/[\r\n]/g, '<br>'));
-    $("#en").html(currentWord.meanEn.replace(/[\r\n]/g, '<br>'));
     $("#youdao").attr("href", "http://dict.youdao.com/search?q=" + currentWord.word);
     $("#youdao").attr("target", "_blank");
-
-    var media = document.getElementsByTagName('audio')[0];
-    audio(media, 'http://dict.youdao.com/dictvoice?type=2&audio=' + currentWord.word);
 
     if (currentWord.selfLenovo !== "") {
         $("#lenovo").html("自创记忆法:"+renderLenovo(currentWord.selfLenovo)+
@@ -599,6 +656,47 @@ function reciteMainView() {
     $("#remember").attr("class", "tab-pane fade");
     $("#recite").attr("class", "tab-pane fade");
     $("#recall").attr("class", "tab-pane fade in active");
+}
+
+function reciteMainView() {
+    var new_index = Math.round(Math.random() * (unit.length - 1));
+
+    if (unit.length > 1 && index === new_index)
+        new_index = unit.length - index - 1;
+    index = new_index;
+    currentWord = unit[index];
+    if (mode === "zh-en" || (mode === "mix" && currentWord.level > 2 &&
+        Math.random() > 0.5 && currentWord.example.length > 3)) {
+        var word = currentWord.word;
+        $(".uk").attr('data-rel', '');
+        $(".us").attr('data-rel', '');
+
+        var examples = currentWord.example.trim().split(/[\r\n]/g),
+            s = examples.length,
+            example = examples[Math.floor(Math.random() * s)],
+            sentence = example.split(":")[1],
+            meaning = example.split(":")[0],
+            blank_div = genBlank(sentence, currentWord.word);
+        $(".word").html(meaning);
+        $("#fuzzy").text("验证");
+        $("#ok").hide();
+        $(".learning-speaker").hide();
+        $(".word_quiz").html(blank_div);
+        $(".word_quiz").show();
+    }
+    else {
+        $(".word").html(currentWord.word);
+        var media = document.getElementsByTagName('audio')[0];
+        audio(media, 'http://dict.youdao.com/dictvoice?type=2&audio=' + currentWord.word);
+        $("#zh").html(currentWord.meanZh.replace(/[\r\n]/g, '<br>'));
+        $("#en").html(currentWord.meanEn.replace(/[\r\n]/g, '<br>'));
+        $("#fuzzy").text("模糊(left)");
+        $("#ok").show();
+        $(".learning-speaker").show();
+        $(".word_quiz").html();
+        $(".word_quiz").hide();
+    }
+    learnPage();
 }
 
 function addLenovo(obj) {
