@@ -34,8 +34,8 @@ print t.groupby('c').count().sort_values('a')
 
 #print data[:3]
 
-#tmp = data[data['lenovo'] == ""]
-tmp = data[data['level'] <= 2.2]
+tmp = data[data['lenovo'] == ""]
+#tmp = data[data['level'] <= 2.2]
 #tmp = tmp[tmp['lenovo'] == ""]
 
 print len(tmp)
