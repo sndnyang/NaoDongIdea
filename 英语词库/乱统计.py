@@ -48,3 +48,16 @@ t['a'] = 1
 
 print t.groupby('c').count().sort_values('a')
 
+# tmp = data[data['lenovo'] == u"，易，死记"]
+#tmp = data[data['level'] <= 2.2]
+#tmp = tmp[tmp['lenovo'] == ""]
+
+#print len(tmp)
+
+#a = pd.Series([e[0] for e in tmp['word']])
+
+#t = pd.DataFrame({'c': a})
+
+#t['a'] = 1
+
+#print t.groupby('c').count().sort_values('a')
