@@ -21,6 +21,7 @@ for i in range(1, nrows): # 循环逐行打印
 
 data = pd.DataFrame(content, columns=l)
 
+print data.groupby('level').count()
 tmp = data[data['level'] <= 0.2]
 print len(tmp)
 
@@ -39,6 +40,8 @@ tmp = data[data['lenovo'] == ""]
 #tmp = tmp[tmp['lenovo'] == ""]
 
 print len(tmp)
+
+print tmp.groupby('level').count()
 
 a = pd.Series([e[0] for e in tmp['word']])
 
