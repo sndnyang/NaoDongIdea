@@ -4,6 +4,9 @@ import numpy as np
 import pandas as pd
 import sqlite3 as sq
 
+reload(sys)
+sys.setdefaultencoding('utf8')
+
 data = xlrd.open_workbook(sys.argv[1])
 table = data.sheets()[0]
 nrows = table.nrows # 获取表的行数
@@ -35,3 +38,15 @@ data['level'] = 0
 con  = sq.connect(sys.argv[2] + '.db')
 
 data.to_sql('word', con)
+
+f = file("books.txt", "w")
+
+import datetime
+
+now = datetime.datetime.now()  
+
+s = "再要你命三千 http://7xt8es.com1.z0.glb.clouddn.com/naodong/word/another-3000.db %d(%s更新)" % (len(content), now.strftime('%Y-%m-%d-%H:%M:%S'))
+
+f.write(s)
+
+f.close()
