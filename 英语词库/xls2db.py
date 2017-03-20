@@ -7,45 +7,58 @@ import sqlite3 as sq
 reload(sys)
 sys.setdefaultencoding('utf8')
 
-data = xlrd.open_workbook(sys.argv[1])
-table = data.sheets()[0]
-nrows = table.nrows # 获取表的行数
-l = ['word', 'level', 'lenovo', 'etyma', 'meanZh', 'meanEn', 'example', 'phonetic']
+def xls2db(fname):
 
-content = []
+    data = xlrd.open_workbook(fname + '.xls')
+    table = data.sheets()[0]
+    nrows = table.nrows # 获取表的行数
+    l = ['word', 'level', 'lenovo', 'etyma', 'meanZh', 'meanEn', 'example', 'phonetic']
 
-for i in range(1, nrows): # 循环逐行打印
-    if i == 0: # 跳过第一行
-        continue
-    row = table.row_values(i)[:len(l)]
-    if len(row) > 8:
-        print len(row), row
-        sys.exit()
-    content.append(row)
+    content = []
 
-print len(content)
+    for i in range(1, nrows): # 循环逐行打印
+        if i == 0: # 跳过第一行
+            continue
+        row = table.row_values(i)[:len(l)]
+        if len(row) > 8:
+            print len(row), row
+            sys.exit()
+        content.append(row)
 
-data = pd.DataFrame(content, columns=l)
+    print len(content)
 
-data['selfLenovo'] = ""
+    data = pd.DataFrame(content, columns=l)
 
-#data = pd.read_csv(sys.argv[1] + '.csv', index_col=False)
+    data['selfLenovo'] = ""
 
-data['level'] = 0
+    #data = pd.read_csv(sys.argv[1] + '.csv', index_col=False)
 
-#print data[:3]
+    data['level'] = 0
 
-con  = sq.connect(sys.argv[2] + '.db')
+    #print data[:3]
 
-data.to_sql('word', con)
+    con  = sq.connect(fname + '.db')
+
+    data.to_sql('word', con)
+    return len(content)
+
+num1 = xls2db('another-3000')
+num2 = xls2db('vocabulary')
 
 f = file("books.txt", "w")
 
-import datetime
+import os.path
+import time
 
-now = datetime.datetime.now()  
+m1 = time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime(os.path.getmtime('another-3000.xls')))
+s = "再要你命三千 http://7xt8es.com1.z0.glb.clouddn.com/naodong/word/another-3000.db %d(%s更新)" % (num1, m1)
 
-s = "再要你命三千 http://7xt8es.com1.z0.glb.clouddn.com/naodong/word/another-3000.db %d(%s更新)" % (len(content), now.strftime('%Y-%m-%d-%H:%M:%S'))
+f.write(s)
+
+f.write('\n')
+
+m2 = time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime(os.path.getmtime('vocabulary.xls')))
+s = "总词库 http://7xt8es.com1.z0.glb.clouddn.com/naodong/word/vocabulary.db %d(%s更新)" % (num2, m2)
 
 f.write(s)
 
