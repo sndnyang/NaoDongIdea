@@ -44,6 +44,7 @@ def xls2db(fname):
 
 num1 = xls2db('another-3000')
 num2 = xls2db('vocabulary')
+num3 = xls2db('before-gre')
 
 f = file("books.txt", "w")
 
@@ -59,6 +60,12 @@ f.write('\n')
 
 m2 = time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime(os.path.getmtime('vocabulary.xls')))
 s = "总词库 http://7xt8es.com1.z0.glb.clouddn.com/naodong/word/vocabulary.db %d(%s更新)" % (num2, m2)
+
+f.write(s)
+f.write('\n')
+
+m3 = time.strftime('%Y-%m-%d-%H:%M:%S', time.localtime(os.path.getmtime('vocabulary.xls')))
+s = "除GRE词库 http://7xt8es.com1.z0.glb.clouddn.com/naodong/word/before-gre.db %d(%s更新)" % (num3, m3)
 
 f.write(s)
 

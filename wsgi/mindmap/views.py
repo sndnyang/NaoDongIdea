@@ -1,5 +1,6 @@
 ﻿# -*- coding:utf-8 -*-
 import os
+import random
 import urllib2
 from datetime import datetime
 
@@ -11,8 +12,6 @@ login_user, login_required
 
 from mindmap import app, db, login_manager
 
-import traceback
-
 @app.route('/')
 @app.route('/index')
 @app.route('/index.html')
@@ -20,6 +19,8 @@ import traceback
 def index():
     import requests
     real_link = "http://localhost/books.txt"
+    real_link = "http://7xt8es.com1.z0.glb.clouddn.com/naodong/word/books.txt?v=" \
+                + str(random.randint(1, 10000))
     r = requests.get(real_link)
     books = []
     for line in r.iter_lines():
